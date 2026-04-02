@@ -101,7 +101,7 @@ class S3Operations(object):
             return final_key
 
     def upload_files_to_s3_with_key(
-            self, file_path, file_name, is_private, parent_doctype, parent_name
+            self, file_path, file_name, is_private, parent_doctype, parent_name, document_id=None
     ):
         """
         Uploads a new file to S3.
@@ -111,15 +111,20 @@ class S3Operations(object):
         key = self.key_generator(file_name, parent_doctype, parent_name)
         content_type = mime_type
         try:
+            metadata = {
+                "ContentType": content_type,
+                "file_name": file_name
+            }
+            if document_id:
+                metadata["document-id"] = document_id
+
+
             if is_private:
                 self.S3_CLIENT.upload_file(
                     file_path, self.BUCKET, key,
                     ExtraArgs={
                         "ContentType": content_type,
-                        "Metadata": {
-                            "ContentType": content_type,
-                            "file_name": file_name
-                        }
+                        "Metadata": metadata
                     }
                 )
             else:
@@ -127,11 +132,7 @@ class S3Operations(object):
                     file_path, self.BUCKET, key,
                     ExtraArgs={
                         "ContentType": content_type,
-                        "ACL": 'public-read',
-                        "Metadata": {
-                            "ContentType": content_type,
-
-                        }
+                        "Metadata": metadata
                     }
                 )
 
@@ -203,7 +204,7 @@ def file_upload_to_s3(doc, method):
         key = s3_upload.upload_files_to_s3_with_key(
             file_path, doc.file_name,
             doc.is_private, parent_doctype,
-            parent_name
+            parent_name, doc.name
         )
 
         if doc.is_private:
@@ -267,7 +268,7 @@ def upload_existing_files_s3(name):
         key = s3_upload.upload_files_to_s3_with_key(
             file_path, doc.file_name,
             doc.is_private, parent_doctype,
-            parent_name
+            parent_name, doc.name
         )
 
         if doc.is_private:
