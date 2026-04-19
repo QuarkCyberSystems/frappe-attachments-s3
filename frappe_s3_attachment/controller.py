@@ -185,6 +185,28 @@ class S3Operations(object):
         return url
 
 
+def get_ignored_doctypes():
+    """
+    Union of doctypes to skip S3 upload for.
+
+    Sources (merged):
+      1. `ignore_s3_upload_for_doctype` in site_config.json (default: ['Data Import'])
+      2. `ignored_doctypes` child table on the `S3 File Attachment` Single —
+         manageable via the Desk UI, which is easier on Frappe Cloud where
+         site_config edits require CLI / Common Site Config access.
+    """
+    ignored = set(frappe.local.conf.get('ignore_s3_upload_for_doctype') or ['Data Import'])
+    try:
+        settings = frappe.get_cached_doc('S3 File Attachment')
+        for row in settings.get('ignored_doctypes') or []:
+            if row.document_type:
+                ignored.add(row.document_type)
+    except Exception:
+        # Settings doc may not exist yet during install / first migrate.
+        pass
+    return ignored
+
+
 @frappe.whitelist()
 def file_upload_to_s3(doc, method):
     """
@@ -195,7 +217,7 @@ def file_upload_to_s3(doc, method):
     site_path = frappe.utils.get_site_path()
     parent_doctype = doc.attached_to_doctype or 'File'
     parent_name = doc.attached_to_name
-    ignore_s3_upload_for_doctype = frappe.local.conf.get('ignore_s3_upload_for_doctype') or ['Data Import']
+    ignore_s3_upload_for_doctype = get_ignored_doctypes()
     if parent_doctype not in ignore_s3_upload_for_doctype:
         if not doc.is_private:
             file_path = site_path + '/public' + path
