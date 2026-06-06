@@ -3,4 +3,6 @@
 *.egg-info
 *.swp
 tags
+node_modules
+__pycache__
 frappe_s3_attachment/docs/current
